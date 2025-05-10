@@ -9,7 +9,7 @@ to detect structural constraints on human genome. BMC Bioinformatics, 17:203.
 */
 
 #include"parameter.h"
-
+#include <cmath>
 
 namespace rintdwr {
 
@@ -17,25 +17,25 @@ namespace parasor_param {
 
 static constexpr double K0 = 273.15;
 static constexpr double GASCONST = 1.98717;//Cal/(K*mol)
-static constexpr double Tmeasure = K0 + 37.0;//Turner2004��37�x�ŁATurner2004�����l���ĂȂ��̂Ō��ߑł�
+static constexpr double Tmeasure = K0 + 37.0;//Turner2004?��?��37?��x?��ŁATurner2004?��?��?��?��?��l?��?��?��ĂȂ�?��̂Ō�?��ߑł�
 static constexpr double SCALE = 10.0;
 static constexpr int INTINF = 1000000;
 static constexpr double INF = std::numeric_limits<double>::max() / 100.0;
 static constexpr int PARAM_MAXLOOP = 30;
 
 static const int8_t BP_pair[8][8] = {
-	///*  _  A  C  G  U  X  K  I */
-	{ 0, 0, 0, 0, 0, 0, 0, 0 },
-	{ 0, 0, 0, 0, 5, 0, 0, 0 },
-	{ 0, 0, 0, 1, 0, 0, 0, 0 },
-	{ 0, 0, 2, 0, 3, 0, 0, 0 },
-	{ 0, 6, 0, 4, 0, 0, 0, 0 },
-	{ 0, 0, 0, 0, 0, 0, 0, 0 },
-	{ 0, 0, 0, 0, 0, 0, 0, 0 },
-	{ 0, 0, 0, 0, 0, 0, 0, 0 }
+	     /*_  A  C  G  U  I  M  X */
+	/*_*/{ 0, 0, 0, 0, 0, 0, 0, 0 },
+	/*A*/{ 0, 0, 0, 0, 5, 0, 0, 0 },
+	/*C*/{ 0, 0, 0, 1, 0, 7, 0, 0 },
+	/*G*/{ 0, 0, 2, 0, 3, 0, 0, 0 },
+	/*U*/{ 0, 6, 0, 4, 0,10,12, 0 },
+	/*I*/{ 0, 0, 8, 0, 9, 0, 0, 0 },
+	/*M*/{ 0, 0, 0, 0,11, 0, 0, 0 },
+	/*X*/{ 0, 0, 0, 0, 0, 0, 0, 0 }
 };
 
-static const int8_t rtype[7] = { 0, 2, 1, 4, 3, 6, 5 };
+static const int8_t rtype[13] = { 0, 2, 1, 4, 3, 6, 5, 8, 7, 10, 9, 12, 11 };
 
 static const int8_t typetable[256] = {
 	0,0,0,0,0,0,0,0,0,0,
@@ -46,7 +46,7 @@ static const int8_t typetable[256] = {
 
 	0,0,0,0,0,0,0,0,0,0,
 	0,0,0,0,0,1/*'A'==65*/,0,2/*'C'==67*/,0,0,
-	0,3/*'G'==71*/,0,0,0,0,0,0,0,0,
+	0,3/*'G'==71*/,0,5/*'I'==73*/,0,0,0,6/*'M'==77*/,0,0,
 	0,0,0,0,0,4/*'U'==85*/,0,0,0,0,
 	0,0,0,0,0,0,0,0,0,0,
 
@@ -114,84 +114,87 @@ int GetPairTypeReverse(const char c1, const char c2) {
 static double kT;
 static double TT;
 static double loghairpin[PARAM_MAXLOOP + 1];
-static double logmismatchH[7][5][5];
-static double logmismatchI[7][5][5];
-static double logmismatchM[7][5][5];
-static double logmismatch1nI[7][5][5];
-static double logmismatch23I[7][5][5];
-static double logmismatchExt[7][5][5];
-static double Triloop[40];
-static double Tetraloop[40];
-static double Hexaloop[40];
-static double logstack[7][7];
+static double logmismatchH[13][7][7];
+static double logmismatchI[13][7][7];
+static double logmismatchM[13][7][7];
+static double logmismatch1nI[13][7][7];
+static double logmismatch23I[13][7][7];
+static double logmismatchExt[13][7][7];
+static double Triloop[200];
+static double Tetraloop[200];
+static double Hexaloop[200];
+static double logstack[13][13];
 static double logbulge[PARAM_MAXLOOP + 1];
 
-static double logint11[8][8][5][5];
-static double logint21[8][8][5][5][5];
-static double logint22[8][8][5][5][5][5];
+// // learning parameter
+// static double dlogstack[13][13];
+
+static double logint11[14][14][7][7];
+static double logint21[14][14][7][7][7];
+static double logint22[14][14][7][7][7][7];
 static double loginternal[PARAM_MAXLOOP + 1];
-static double logdangle5[8][5];
-static double logdangle3[8][5];
+static double logdangle5[14][7];
+static double logdangle3[14][7];
 static double logninio[PARAM_MAXLOOP + 1];
 static double logMLintern;
 static double logMLclosing;
 static double logML_BASE;
 
 //ENTHALPIES
-static double logstack_enthalpies[7][7];
-static double logmismatchH_enthalpies[7][5][5];
-static double logmismatchI_enthalpies[7][5][5];
-static double logmismatch1nI_enthalpies[7][5][5];
-static double logmismatch23I_enthalpies[7][5][5];
-static double logmismatchM_enthalpies[7][5][5];
-static double logmismatchExt_enthalpies[7][5][5];
-static double logdangle5_enthalpies[8][5];
-static double logdangle3_enthalpies[8][5];
-static double logint11_enthalpies[8][8][5][5];
-static double logint21_enthalpies[8][8][5][5][5];
-static double logint22_enthalpies[8][8][5][5][5][5];
+static double logstack_enthalpies[13][13];
+static double logmismatchH_enthalpies[13][7][7];
+static double logmismatchI_enthalpies[13][7][7];
+static double logmismatch1nI_enthalpies[13][7][7];
+static double logmismatch23I_enthalpies[13][7][7];
+static double logmismatchM_enthalpies[13][7][7];
+static double logmismatchExt_enthalpies[13][7][7];
+static double logdangle5_enthalpies[14][7];
+static double logdangle3_enthalpies[14][7];
+static double logint11_enthalpies[14][14][7][7];
+static double logint21_enthalpies[14][14][7][7][7];
+static double logint22_enthalpies[14][14][7][7][7][7];
 static double loghairpin_enthalpies[PARAM_MAXLOOP + 1];
 static double logbulge_enthalpies[PARAM_MAXLOOP + 1];
 static double loginternal_enthalpies[PARAM_MAXLOOP + 1];
 static double logMLintern_enthalpy;
 static double logMLclosing_enthalpy;
 static double logML_BASE_enthalpy;
-static double Triloop_enthalpies[40];
-static double Tetraloop_enthalpies[40];
-static double Hexaloop_enthalpies[40];
+static double Triloop_enthalpies[200];
+static double Tetraloop_enthalpies[200];
+static double Hexaloop_enthalpies[200];
 
 static double F_ninio37, F_ninio_enthalpy, MAX_NINIO;
 static double TermAU_energy, TermAU_enthalpy;
 
 //params, log scale
 static double parhairpin[PARAM_MAXLOOP + 1];
-static double parmismatchH[7][5][5];
-static double parmismatchI[7][5][5];
-static double parmismatchM[7][5][5];
-static double parmismatch1nI[7][5][5];
-static double parmismatch23I[7][5][5];
-static double parmismatchExt[7][5][5];
-static double parTriloop[40];
-static double parTetraloop[40];
-static double parHexaloop[40];
-static double parstack[7][7];
+static double parmismatchH[13][7][7];
+static double parmismatchI[13][7][7];
+static double parmismatchM[13][7][7];
+static double parmismatch1nI[13][7][7];
+static double parmismatch23I[13][7][7];
+static double parmismatchExt[13][7][7];
+static double parTriloop[200];
+static double parTetraloop[200];
+static double parHexaloop[200];
+static double parstack[13][13];
 static double parbulge[PARAM_MAXLOOP + 1];
 
-static double parint11[8][8][5][5];
-static double parint21[8][8][5][5][5];
-static double parint22[8][8][5][5][5][5];
+static double parint11[14][14][7][7];
+static double parint21[14][14][7][7][7];
+static double parint22[14][14][7][7][7][7];
 static double parinternal[PARAM_MAXLOOP + 1];
-static double pardangle5[8][5];
-static double pardangle3[8][5];
+static double pardangle5[14][7];
+static double pardangle3[14][7];
 static double parninio[PARAM_MAXLOOP + 1];
 static double parMLintern;
 static double parMLclosing;
 static double parML_BASE;
 static double parTermAU;
 
-static char Triloops[400];
-static char Tetraloops[400];
-static char Hexaloops[400];
+static char Triloops[2000];
+static char Tetraloops[2000];
+static char Hexaloops[2000];
 
 static const bool no_closingGU = false;
 static const bool tetra = true;
@@ -200,6 +203,7 @@ static double lxc37 = 107.856;
 bool initialized = false;
 bool inittermau = false;
 bool old_param = false;
+bool modified = false;
 
 bool counting = false;
 
@@ -228,25 +232,25 @@ static void ComputeParams() {
 		const double ninio_GT = (F_ninio_enthalpy - (F_ninio_enthalpy - F_ninio37) * TT);
 		parninio[i] = -std::min(MAX_NINIO, i * ninio_GT) * 10.0 / kT;
 	}
-	for (int i = 1; i <= 6; ++i) {
-		for (int j = 1; j <= 6; ++j) {
+	for (int i = 1; i <= 12; ++i) {
+		for (int j = 1; j <= 12; ++j) {
 			parstack[i][j] = Energy(logstack_enthalpies[i][j], logstack[i][j]);
-			for (int k = 1; k <= 4; ++k) {
-				for (int l = 1; l <= 4; ++l) {
+			for (int k = 1; k <= 6; ++k) {
+				for (int l = 1; l <= 6; ++l) {
 					parint11[i][j][k][l] = Energy(logint11_enthalpies[i][j][k][l], logint11[i][j][k][l]);
-					for (int m = 1; m <= 4; ++m) {
+					for (int m = 1; m <= 6; ++m) {
 						parint21[i][j][k][l][m] = Energy(logint21_enthalpies[i][j][k][l][m], logint21[i][j][k][l][m]);
-						for (int n = 1; n <= 4; ++n) {
+						for (int n = 1; n <= 6; ++n) {
 							parint22[i][j][k][l][m][n] = Energy(logint22_enthalpies[i][j][k][l][m][n], logint22[i][j][k][l][m][n]);
 						}
 					}
 				}
 			}
 		}
-		for (int j = 1; j <= 4; ++j) {
+		for (int j = 1; j <= 6; ++j) {
 			pardangle5[i][j] = SmoothingEnergy(logdangle5_enthalpies[i][j], logdangle5[i][j]);
 			pardangle3[i][j] = SmoothingEnergy(logdangle3_enthalpies[i][j], logdangle3[i][j]);
-			for (int k = 1; k <= 4; ++k) {
+			for (int k = 1; k <= 6; ++k) {
 				parmismatchH[i][j][k] = Energy(logmismatchH_enthalpies[i][j][k], logmismatchH[i][j][k]);
 				parmismatchI[i][j][k] = Energy(logmismatchI_enthalpies[i][j][k], logmismatchI[i][j][k]);
 				parmismatchM[i][j][k] = SmoothingEnergy(logmismatchM_enthalpies[i][j][k], logmismatchM[i][j][k]);
@@ -260,7 +264,7 @@ static void ComputeParams() {
 	parMLclosing = Energy(logMLclosing_enthalpy, logMLclosing);
 	parML_BASE = Energy(logML_BASE_enthalpy, logML_BASE);
 	parTermAU = Energy(TermAU_enthalpy, TermAU_energy);
-	for (int i = 0; i < 40; ++i) {
+	for (int i = 0; i < 200; ++i) {
 		parTriloop[i] = Energy(Triloop_enthalpies[i], Triloop[i]);
 		parTetraloop[i] = Energy(Tetraloop_enthalpies[i], Tetraloop[i]);
 		//parTetraloop[i] = Energy(-400, Tetraloop[i]);
@@ -576,45 +580,45 @@ private:
 	}
 	void FillINF()
 	{
-		std::fill(&(logstack[0][0]), &(logstack[0][0]) + 7 * 7, -INF);
-		std::fill(&(logmismatchH[0][0][0]), &(logmismatchH[0][0][0]) + 7 * 5 * 5, -INF);
-		std::fill(&(logmismatchI[0][0][0]), &(logmismatchI[0][0][0]) + 7 * 5 * 5, -INF);
-		std::fill(&(logmismatch1nI[0][0][0]), &(logmismatch1nI[0][0][0]) + 7 * 5 * 5, -INF);
-		std::fill(&(logmismatch23I[0][0][0]), &(logmismatch23I[0][0][0]) + 7 * 5 * 5, -INF);
-		std::fill(&(logmismatchM[0][0][0]), &(logmismatchM[0][0][0]) + 7 * 5 * 5, -INF);
-		std::fill(&(logmismatchExt[0][0][0]), &(logmismatchExt[0][0][0]) + 7 * 5 * 5, -INF);
-		std::fill(&(logdangle5[0][0]), &(logdangle5[0][0]) + 8 * 5, -INF);
-		std::fill(&(logdangle3[0][0]), &(logdangle3[0][0]) + 8 * 5, -INF);
-		std::fill(&(logint11[0][0][0][0]), &(logint11[0][0][0][0]) + 8 * 8 * 5 * 5, -INF);
-		std::fill(&(logint21[0][0][0][0][0]), &(logint21[0][0][0][0][0]) + 8 * 8 * 5 * 5 * 5, -INF);
-		std::fill(&(logint22[0][0][0][0][0][0]), &(logint22[0][0][0][0][0][0]) + 8 * 8 * 5 * 5 * 5 * 5, -INF);//ParasoR�̃o�O
+		std::fill(&(logstack[0][0]), &(logstack[0][0]) + 13 * 13, -INF);
+		std::fill(&(logmismatchH[0][0][0]), &(logmismatchH[0][0][0]) + 13 * 7 * 7, -INF);
+		std::fill(&(logmismatchI[0][0][0]), &(logmismatchI[0][0][0]) + 13 * 7 * 7, -INF);
+		std::fill(&(logmismatch1nI[0][0][0]), &(logmismatch1nI[0][0][0]) + 13 * 7 * 7, -INF);
+		std::fill(&(logmismatch23I[0][0][0]), &(logmismatch23I[0][0][0]) + 13 * 7 * 7, -INF);
+		std::fill(&(logmismatchM[0][0][0]), &(logmismatchM[0][0][0]) + 13 * 7 * 7, -INF);
+		std::fill(&(logmismatchExt[0][0][0]), &(logmismatchExt[0][0][0]) + 13 * 7 * 7, -INF);
+		std::fill(&(logdangle5[0][0]), &(logdangle5[0][0]) + 14 * 7, -INF);
+		std::fill(&(logdangle3[0][0]), &(logdangle3[0][0]) + 14 * 7, -INF);
+		std::fill(&(logint11[0][0][0][0]), &(logint11[0][0][0][0]) + 14 * 14 * 7 * 7, -INF);
+		std::fill(&(logint21[0][0][0][0][0]), &(logint21[0][0][0][0][0]) + 14 * 14 * 7 * 7 * 7, -INF);
+		std::fill(&(logint22[0][0][0][0][0][0]), &(logint22[0][0][0][0][0][0]) + 14 * 14 * 7 * 7 * 7 * 7, -INF);//ParasoR?��̃o?��O
 		std::fill(&(loghairpin[0]), &(loghairpin[0]) + PARAM_MAXLOOP + 1, -INF);
 		std::fill(&(logbulge[0]), &(logbulge[0]) + PARAM_MAXLOOP + 1, -INF);
 		std::fill(&(loginternal[0]), &(loginternal[0]) + PARAM_MAXLOOP + 1, -INF);
 		std::fill(&(logninio)[0], &(logninio[0]) + PARAM_MAXLOOP + 1, -INF);
-		std::fill(&(Triloop[0]), &(Triloop[0]) + 40, -INF);
-		std::fill(&(Tetraloop[0]), &(Tetraloop[0]) + 40, -INF);
-		std::fill(&(Hexaloop[0]), &(Hexaloop[0]) + 40, -INF);
+		std::fill(&(Triloop[0]), &(Triloop[0]) + 200, -INF);
+		std::fill(&(Tetraloop[0]), &(Tetraloop[0]) + 200, -INF);
+		std::fill(&(Hexaloop[0]), &(Hexaloop[0]) + 200, -INF);
 
 		//ENTHALPIES
-		std::fill(&(logstack_enthalpies[0][0]), &(logstack_enthalpies[0][0]) + 7 * 7, -INF);
-		std::fill(&(logmismatchH_enthalpies[0][0][0]), &(logmismatchH_enthalpies[0][0][0]) + 7 * 5 * 5, -INF);
-		std::fill(&(logmismatchI_enthalpies[0][0][0]), &(logmismatchI_enthalpies[0][0][0]) + 7 * 5 * 5, -INF);
-		std::fill(&(logmismatch1nI_enthalpies[0][0][0]), &(logmismatch1nI_enthalpies[0][0][0]) + 7 * 5 * 5, -INF);
-		std::fill(&(logmismatch23I_enthalpies[0][0][0]), &(logmismatch23I_enthalpies[0][0][0]) + 7 * 5 * 5, -INF);
-		std::fill(&(logmismatchM_enthalpies[0][0][0]), &(logmismatchM_enthalpies[0][0][0]) + 7 * 5 * 5, -INF);
-		std::fill(&(logmismatchExt_enthalpies[0][0][0]), &(logmismatchExt_enthalpies[0][0][0]) + 7 * 5 * 5, -INF);
-		std::fill(&(logdangle5_enthalpies[0][0]), &(logdangle5_enthalpies[0][0]) + 8 * 5, -INF);
-		std::fill(&(logdangle3_enthalpies[0][0]), &(logdangle3_enthalpies[0][0]) + 8 * 5, -INF);
-		std::fill(&(logint11_enthalpies[0][0][0][0]), &(logint11_enthalpies[0][0][0][0]) + 8 * 8 * 5 * 5, -INF);
-		std::fill(&(logint21_enthalpies[0][0][0][0][0]), &(logint21_enthalpies[0][0][0][0][0]) + 8 * 8 * 5 * 5 * 5, -INF);
-		std::fill(&(logint22_enthalpies[0][0][0][0][0][0]), &(logint22_enthalpies[0][0][0][0][0][0]) + 8 * 8 * 5 * 5 * 5 * 5, -INF);
+		std::fill(&(logstack_enthalpies[0][0]), &(logstack_enthalpies[0][0]) + 13 * 13, -INF);
+		std::fill(&(logmismatchH_enthalpies[0][0][0]), &(logmismatchH_enthalpies[0][0][0]) + 13 * 7 * 7, -INF);
+		std::fill(&(logmismatchI_enthalpies[0][0][0]), &(logmismatchI_enthalpies[0][0][0]) + 13 * 7 * 7, -INF);
+		std::fill(&(logmismatch1nI_enthalpies[0][0][0]), &(logmismatch1nI_enthalpies[0][0][0]) + 13 * 7 * 7, -INF);
+		std::fill(&(logmismatch23I_enthalpies[0][0][0]), &(logmismatch23I_enthalpies[0][0][0]) + 13 * 7 * 7, -INF);
+		std::fill(&(logmismatchM_enthalpies[0][0][0]), &(logmismatchM_enthalpies[0][0][0]) + 13 * 7 * 7, -INF);
+		std::fill(&(logmismatchExt_enthalpies[0][0][0]), &(logmismatchExt_enthalpies[0][0][0]) + 13 * 7 * 7, -INF);
+		std::fill(&(logdangle5_enthalpies[0][0]), &(logdangle5_enthalpies[0][0]) + 14 * 7, -INF);
+		std::fill(&(logdangle3_enthalpies[0][0]), &(logdangle3_enthalpies[0][0]) + 14 * 7, -INF);
+		std::fill(&(logint11_enthalpies[0][0][0][0]), &(logint11_enthalpies[0][0][0][0]) + 14 * 14 * 7 * 7, -INF);
+		std::fill(&(logint21_enthalpies[0][0][0][0][0]), &(logint21_enthalpies[0][0][0][0][0]) + 14 * 14 * 7 * 7 * 7, -INF);
+		std::fill(&(logint22_enthalpies[0][0][0][0][0][0]), &(logint22_enthalpies[0][0][0][0][0][0]) + 14 * 14 * 7 * 7 * 7 * 7, -INF);
 		std::fill(&(loghairpin_enthalpies[0]), &(loghairpin_enthalpies[0]) + PARAM_MAXLOOP + 1, -INF);
 		std::fill(&(logbulge_enthalpies[0]), &(logbulge_enthalpies[0]) + PARAM_MAXLOOP + 1, -INF);
 		std::fill(&(loginternal_enthalpies[0]), &(loginternal_enthalpies[0]) + PARAM_MAXLOOP + 1, -INF);
-		std::fill(&(Triloop_enthalpies[0]), &(Triloop_enthalpies[0]) + 40, -INF);
-		std::fill(&(Tetraloop_enthalpies[0]), &(Tetraloop_enthalpies[0]) + 40, -INF);
-		std::fill(&(Hexaloop_enthalpies[0]), &(Hexaloop_enthalpies[0]) + 40, -INF);
+		std::fill(&(Triloop_enthalpies[0]), &(Triloop_enthalpies[0]) + 200, -INF);
+		std::fill(&(Tetraloop_enthalpies[0]), &(Tetraloop_enthalpies[0]) + 200, -INF);
+		std::fill(&(Hexaloop_enthalpies[0]), &(Hexaloop_enthalpies[0]) + 200, -INF);
 	}
 	void ReadOnlyMisc(const std::string& file)
 	{
@@ -660,8 +664,15 @@ public:
 		ReadOnlyMisc(file);
 		ifs.open(file.c_str());
 		old_param = true;
-		if (getline(ifs, str) && str.find("## RNAfold parameter file v2.0") != std::string::npos)
-			old_param = false;
+		modified = false;
+		if (getline(ifs, str)) {
+			if (str.find("## RNAfold parameter file v2.0") != std::string::npos) {
+				old_param = false;
+			}
+			else if (str.find("## modified nuculeobases") != std::string::npos) {
+				old_param = false;
+			}
+		}
 		while (getline(ifs, str)) {
 			if (str.size() > 0 && str[str.size() - 1] == '\r') {
 				str.erase(str.size() - 1);
@@ -669,42 +680,42 @@ public:
 			int num = param_type(str);
 			if (num == Stack) {
 				if (old_param) Read2Dim(&(logstack[0][0]), 7, 7, 0, 0);
-				else Read2Dim(&(logstack[0][0]), 7, 7, 1, 1);
+				else Read2Dim(&(logstack[0][0]), 13, 13, 1, 1);
 			}
 			else if (num == MisH) {
 				if (old_param) Read3Dim(&(logmismatchH[0][0][0]), 7, 5, 5, 0, 0, 0);
-				else Read3Dim(&(logmismatchH[0][0][0]), 7, 5, 5, 1, 0, 0);
+				else Read3Dim(&(logmismatchH[0][0][0]), 13, 7, 7, 1, 0, 0);
 			}
 			else if (num == MisI) {
 				if (old_param) Read3Dim(&(logmismatchI[0][0][0]), 7, 5, 5, 0, 0, 0);
-				else Read3Dim(&(logmismatchI[0][0][0]), 7, 5, 5, 1, 0, 0);
+				else Read3Dim(&(logmismatchI[0][0][0]), 13, 7, 7, 1, 0, 0);
 			}
 			else if (num == Mis1n) {
-				Read3Dim(&(logmismatch1nI[0][0][0]), 7, 5, 5, 1, 0, 0);
+				Read3Dim(&(logmismatch1nI[0][0][0]), 13, 7, 7, 1, 0, 0);
 			}
 			else if (num == MisI23) {
-				Read3Dim(&(logmismatch23I[0][0][0]), 7, 5, 5, 1, 0, 0);
+				Read3Dim(&(logmismatch23I[0][0][0]), 13, 7, 7, 1, 0, 0);
 			}
 			else if (num == MisM) {
-				Read3DimSmooth(&(logmismatchM[0][0][0]), 7, 5, 5, 1, 0, 0);
+				Read3DimSmooth(&(logmismatchM[0][0][0]), 13, 7, 7, 1, 0, 0);
 			}
 			else if (num == MisE) {
-				Read3DimSmooth(&(logmismatchExt[0][0][0]), 7, 5, 5, 1, 0, 0);
+				Read3DimSmooth(&(logmismatchExt[0][0][0]), 13, 7, 7, 1, 0, 0);
 			}
 			else if (num == Dan5) {
 				if (old_param) Read2DimSmooth(&(logdangle5[0][0]), 8, 5, 0, 0);
-				else Read2DimSmooth(&(logdangle5[0][0]), 8, 5, 1, 0);
+				else Read2DimSmooth(&(logdangle5[0][0]), 14, 7, 1, 0);
 			}
 			else if (num == Dan3) {
 				if (old_param) Read2DimSmooth(&(logdangle3[0][0]), 8, 5, 0, 0);
-				else Read2DimSmooth(&(logdangle3[0][0]), 8, 5, 1, 0);
+				else Read2DimSmooth(&(logdangle3[0][0]), 14, 7, 1, 0);
 			}
 			else if (num == Int11) {
-				Read4Dim(&(logint11[0][0][0][0]), 8, 8, 5, 5,
+				Read4Dim(&(logint11[0][0][0][0]), 14, 14, 7, 7,
 					1, 1, 0, 0);
 			}
 			else if (num == Int21) {
-				Read5Dim(&(logint21[0][0][0][0][0]), 8, 8, 5, 5, 5,
+				Read5Dim(&(logint21[0][0][0][0][0]), 14, 14, 7, 7, 7,
 					1, 1, 0, 0, 0);
 			}
 			else if (num == Int22) {
@@ -714,7 +725,7 @@ public:
 						0, 0, 0, 0, 0, 0);
 				}
 				else {
-					Read6Dim(&(logint22[0][0][0][0][0][0]), 8, 8, 5, 5, 5, 5,
+					Read6Dim(&(logint22[0][0][0][0][0][0]), 14, 14, 7, 7, 7, 7,
 						1, 1, 1, 1, 1, 1,
 						1, 1, 0, 0, 0, 0);
 				}
@@ -742,7 +753,7 @@ public:
 				ReadString(&(Triloop[0]), &(Triloop_enthalpies[0]), tmp);
 				try {
 					//strcpy_s(Triloops, tmp.c_str());
-					for (int a = 0; a < 400; ++a)Triloops[a] = '\0';
+					for (int a = 0; a < 2000; ++a)Triloops[a] = '\0';
 					for (int a = 0; a < tmp.size(); ++a)Triloops[a] = tmp[a];
 				}
 				catch (...) {
@@ -754,7 +765,7 @@ public:
 				ReadString(&(Tetraloop[0]), &(Tetraloop_enthalpies[0]), tmp);
 				try {
 					//strcpy_s(Tetraloops, tmp.c_str());
-					for (int a = 0; a < 400; ++a)Tetraloops[a] = '\0';
+					for (int a = 0; a < 2000; ++a)Tetraloops[a] = '\0';
 					for (int a = 0; a < tmp.size(); ++a)Tetraloops[a] = tmp[a];
 				}
 				catch (...) {
@@ -766,7 +777,7 @@ public:
 				ReadString(&(Hexaloop[0]), &(Hexaloop_enthalpies[0]), tmp);
 				try {
 					//strcpy_s(Hexaloops, tmp.c_str());
-					for (int a = 0; a < 400; ++a)Hexaloops[a] = '\0';
+					for (int a = 0; a < 2000; ++a)Hexaloops[a] = '\0';
 					for (int a = 0; a < tmp.size(); ++a)Hexaloops[a] = tmp[a];
 				}
 				catch (...) {
@@ -777,52 +788,52 @@ public:
 			//ENTHALPIES
 			else if (num == Stack_ent) {
 				if (old_param) Read2Dim(&(logstack_enthalpies[0][0]), 7, 7, 0, 0);
-				else Read2Dim(&(logstack_enthalpies[0][0]), 7, 7, 1, 1);
+				else Read2Dim(&(logstack_enthalpies[0][0]), 13, 13, 1, 1);
 			}
 			else if (num == MisH_ent) {
 				if (old_param) Read3Dim(&(logmismatchH_enthalpies[0][0][0]), 7, 5, 5, 0, 0, 0);
-				else Read3Dim(&(logmismatchH_enthalpies[0][0][0]), 7, 5, 5, 1, 0, 0);
+				else Read3Dim(&(logmismatchH_enthalpies[0][0][0]), 13, 7, 7, 1, 0, 0);
 			}
 			else if (num == MisI_ent) {
 				if (old_param) Read3Dim(&(logmismatchI_enthalpies[0][0][0]), 7, 5, 5, 0, 0, 0);
-				else Read3Dim(&(logmismatchI_enthalpies[0][0][0]), 7, 5, 5, 1, 0, 0);
+				else Read3Dim(&(logmismatchI_enthalpies[0][0][0]), 13, 7, 7, 1, 0, 0);
 			}
 			else if (num == Mis1n_ent) {
-				Read3Dim(&(logmismatch1nI_enthalpies[0][0][0]), 7, 5, 5, 1, 0, 0);
+				Read3Dim(&(logmismatch1nI_enthalpies[0][0][0]), 13, 7, 7, 1, 0, 0);
 			}
 			else if (num == MisI23_ent) {
-				Read3Dim(&(logmismatch23I_enthalpies[0][0][0]), 7, 5, 5, 1, 0, 0);
+				Read3Dim(&(logmismatch23I_enthalpies[0][0][0]), 13, 7, 7, 1, 0, 0);
 			}
 			else if (num == MisM_ent) {
-				Read3DimSmooth(&(logmismatchM_enthalpies[0][0][0]), 7, 5, 5, 1, 0, 0);
+				Read3DimSmooth(&(logmismatchM_enthalpies[0][0][0]), 13, 7, 7, 1, 0, 0);
 			}
 			else if (num == MisE_ent) {
-				Read3DimSmooth(&(logmismatchExt_enthalpies[0][0][0]), 7, 5, 5, 1, 0, 0);
+				Read3DimSmooth(&(logmismatchExt_enthalpies[0][0][0]), 13, 7, 7, 1, 0, 0);
 			}
 			else if (num == Dan5_ent) {
 				if (old_param) Read2DimSmooth(&(logdangle5_enthalpies[0][0]), 8, 5, 0, 0);
-				else Read2DimSmooth(&(logdangle5_enthalpies[0][0]), 8, 5, 1, 0);
+				else Read2DimSmooth(&(logdangle5_enthalpies[0][0]), 14, 7, 1, 0);
 			}
 			else if (num == Dan3_ent) {
 				if (old_param) Read2DimSmooth(&(logdangle3_enthalpies[0][0]), 8, 5, 0, 0);
-				else Read2DimSmooth(&(logdangle3_enthalpies[0][0]), 8, 5, 1, 0);
+				else Read2DimSmooth(&(logdangle3_enthalpies[0][0]), 14, 7, 1, 0);
 			}
 			else if (num == Int11_ent) {
-				Read4Dim(&(logint11_enthalpies[0][0][0][0]), 8, 8, 5, 5,
+				Read4Dim(&(logint11_enthalpies[0][0][0][0]), 14, 14, 7, 7,
 					1, 1, 0, 0);
 			}
 			else if (num == Int21_ent) {
-				Read5Dim(&(logint21_enthalpies[0][0][0][0][0]), 8, 8, 5, 5, 5,
+				Read5Dim(&(logint21_enthalpies[0][0][0][0][0]), 14, 14, 7, 7, 7,
 					1, 1, 0, 0, 0);
 			}
 			else if (num == Int22_ent) {
 				if (old_param) {
-					Read6Dim(&(logint22_enthalpies[0][0][0][0][0][0]), 8, 8, 5, 5, 5, 5,
+					Read6Dim(&(logint22_enthalpies[0][0][0][0][0][0]), 14, 14, 7, 7, 7, 7,
 						1, 1, 1, 1, 1, 1,
 						0, 0, 0, 0, 0, 0);
 				}
 				else {
-					Read6Dim(&(logint22_enthalpies[0][0][0][0][0][0]), 8, 8, 5, 5, 5, 5,
+					Read6Dim(&(logint22_enthalpies[0][0][0][0][0][0]), 14, 14, 7, 7, 7, 7,
 						1, 1, 1, 1, 1, 1,
 						1, 1, 0, 0, 0, 0);
 				}
@@ -848,7 +859,10 @@ public:
 };
 
 static inline bool IsAU(const int type) {
-	return (type > 2);
+	// return (type > 2);
+	// �I���W�i���ł�CG��GC�̃y�A������Ă���
+	// �C������I��G�Ɠ��l�Ƃ���Ȃ炻��ɉ�����CI��IC�����
+	return !(type == 0 || type == 1 || type == 2 || type == 7 || type == 8);
 }
 static inline bool IsCloseGU(const int type) {
 	return (type == 3 || type == 4);
@@ -864,6 +878,12 @@ static void ChangeEnergyParam(const std::string name = "")
 		file = "energy_param/rna_andronescu2007.par";
 	else if (name == "Turner1999")
 		file = "energy_param/rna_turner1999.par";
+	else if (name.find("modified_nuculeobases") != std::string::npos)
+	{
+		file = "energy_param/";
+		file += name;
+		file += ".par";
+	}
 	else {
 		//file = name;
 		//doubt = true;
@@ -930,8 +950,10 @@ double ParHairpinEnergy(const int i, const int j, const std::string& sequence)
 		const std::string sub_seq = sequence.substr(i, d + 2);
 		const size_t tel = std::string(Tetraloops).find(sub_seq);
 		if (tel != std::string::npos) {
-			if (type != 7) return parTetraloop[tel / 7];
-			else q += parTetraloop[tel / 7];
+			return parTetraloop[tel / 7];
+			// if (type != 7) return parTetraloop[tel / 7];  // ���̃R�[�h�ł�type��7�ɂȂ邱�Ƃ͂Ȃ������͂��Ȃ̂ł��̍s��폜����
+			// else 
+			// q += parTetraloop[tel / 7];
 		}
 	}
 	if (tetra && d == 6) {
@@ -1012,6 +1034,150 @@ double ParLoopEnergy(const int i, const int j, const int p, const int q, const s
 	}
 	return z;
 }
+
+double dparstack_dp(const int i, const int j)
+{
+	auto energy37 = logstack[i][j];
+	if (energy37 == INTINF) return 0.0;
+	// auto enthalpy = logstack_enthalpies[i][j];
+	// const double GT = enthalpy - (enthalpy - energy37) * TT;
+	// return -GT * 10.0 / kT;
+	//変更　energy37で微分するので、energy37は消えるはず。本来TTも計算には不要のはずだが、結果的に1.0になっているので残しておく
+	//return - energy37 * TT * 10.0 / kT;
+	return - TT * 10.0 / kT;
+}
+
+double dParLoopEnergy_dp(
+	const int i, 
+	const int j, 
+	const int p, 
+	const int q, 
+	const std::string& sequence, 
+	const int pidx1, 
+	const int pidx2)
+{
+	if (counting)return 0.0;
+	assert(i < p&&p < q&&q < j);
+	const int type1 = GetPairType(sequence[i], sequence[j]);
+	const int type2 = GetPairTypeReverse(sequence[p], sequence[q]);
+	const int u1 = p - i - 1;
+	const int u2 = j - q - 1;
+	const int u = std::max(u1, u2);
+	assert(u1 + u2 <= PARAM_MAXLOOP);
+
+	// return 0.0 if it is not the position where 
+	// the derivative is calculated
+	if ((type1!=pidx1) || (type2!=pidx2)) return 0.0;
+
+	// stop the program if we are calculating 
+	// the derivative related to MU or UM 
+	// if ((type1==11) || (type2==11)) assert(0);
+	// if ((type1==12) || (type2==12)) assert(0);
+
+	double z = 0.0;
+	if (u1 == 0 && u2 == 0) {
+		return dparstack_dp(type1, type2);
+	}
+	else if (no_closingGU && (IsCloseGU(type1) || IsCloseGU(type2))) {
+		return 0.0;
+	}
+	else if ((u1 == 0) || (u2 == 0)) { /* bulge */
+		if (u == 1) return dparstack_dp(type1, type2);
+	}
+	else {
+		return 0.0;
+	}
+	return z;
+}
+
+// void reset_dlogstack(const double value = 0.0)
+// {
+// 	std::fill(&(dlogstack[0][0]), &(dlogstack[0][0]) + 13 * 13, value);
+// }
+
+// void set_dlogstack(const double value, const int i, const int j)
+// {
+// 	dlogstack[i][j] = value;
+// 	return;
+// }
+
+void update_logstack(const double dif, const int i, const int j)
+{
+	logstack[i][j] -= dif;
+	return;
+}
+
+template <size_t pidx1Size, size_t pidx2Size>
+void reset_logstack(const double value, const double weight_central, bool (&mask)[pidx1Size][pidx2Size])
+{
+	for (int i=1; i<=12; ++i) for (int j=1; j<=12; ++j) {
+		const int im = i - 1;
+		const int jm = j - 1;
+		if ((im < pidx1Size) && (jm < pidx2Size) && mask[im][jm]) {
+			logstack[i][j] = value;
+			if (((i == 3) && (j == 3)) || ((i == 4) && (j == 4)))
+				logstack[i][j] *= weight_central;
+		}
+	}
+	// std::fill(&(logstack[0][0]), &(logstack[0][0]) + 13 * 13, value);
+	return;
+}
+
+// Explicit instantiation
+template void reset_logstack<12,12>(const double value, const double weight_central, bool (&mask)[12][12]);
+
+
+void update_parstack()
+{
+
+	for (int i = 1; i <= 12; ++i) 
+		for (int j = 1; j <= 12; ++j)
+			parstack[i][j] = Energy(logstack_enthalpies[i][j], logstack[i][j]);
+	return;
+}
+
+template <size_t pidx1Size, size_t pidx2Size>
+void print_logstack(const std::string logfile,  bool (&mask)[pidx1Size][pidx2Size])
+{	
+	bool hasfile = !logfile.empty();
+	std::ofstream outfile;
+	if (hasfile) {
+		outfile.open(logfile, std::ios::app);
+		hasfile = hasfile && outfile.is_open();
+		if (hasfile)
+			outfile << "\n[logstack parameter]\n";
+	}
+	std::cout << "\n[logstack parameter]\n";
+
+	for (int i=1; i<=12; ++i) {
+		for (int j=1; j<=12; ++j) {
+			const int im = i - 1;
+			const int jm = j - 1;
+			const int value = static_cast<int>(std::round(logstack[i][j]));
+			if (mask[im][jm]) {
+				// Set precision to 0 to remove digits after decimal
+    			// Set width to 4 (3 digits + 1 for decimal point)
+    			// Set fill character to space
+    			std::cout << std::setw(5) << std::setfill(' ') << value << ",";
+			} else {
+				std::cout << std::setw(5) << std::setfill(' ') << 'x' << ",";
+			}
+			
+			if (hasfile)
+				outfile << std::setw(4) << std::setfill(' ') << value << ",";
+		}
+		std::cout << "\n";
+		if (hasfile)
+			outfile << "\n";
+	}
+
+	if (hasfile)
+		outfile.close();
+	return;
+}
+
+// Explicit instantiation
+template void print_logstack<12, 12>(const std::string logfile, bool (&mask)[12][12]);
 
 void InitializeParameter(const std::string& parameter_file_name, const double temperature) {
 	SetTemperature(temperature);

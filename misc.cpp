@@ -93,13 +93,13 @@ std::vector<std::vector<int>> VerifyAndParseStructure(const std::string& structu
 	//‚±‚Ì‚Æ‚«‚Ìi,j‚Í1-origin‚Æ‚·‚éB
 
 	for (const char c : sequence) {
-		assert(c == 'A' || c == 'U' || c == 'G' || c == 'C');
+		assert(c == 'A' || c == 'U' || c == 'G' || c == 'C' || c == 'I' || c == 'M');
 	}
 	assert(structure.size() == sequence.size());
 	assert(1 <= max_span && max_span <= int(structure.size()));
 
 	const int n = int(sequence.size());
-	const std::string bp = "AU UA GC CG GU UG";
+	const std::string bp = "AU UA GC CG GU UG CI IC IU UI MU UM";
 	std::string query = "XX";
 	std::vector<std::vector<int>>ans(n + 1, std::vector<int>(n + 1, 0));
 	std::stack<int> bp_pos;

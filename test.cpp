@@ -66,8 +66,8 @@ void TestSampling(const int num) {
 			const auto ans1 = SampleMcCaskillUniform(sequence, 1, max_span, max_loop, true, int(rnd()));
 			assert(ans1.second == Bigint(structures.size()));
 
-			const auto ans2 = SampleMcCaskillEnergyAware(sequence, "Turner2004", 37.0, 1, max_span, max_loop, true, int(rnd()));
-			assert(abs(ans2.second.log_scale - log(SimpleMcCaskill<double>(sequence, "Turner2004", 37.0, max_span, max_loop).second)) < 0.00001);
+			const auto ans2 = SampleMcCaskillEnergyAware(sequence, "modified_nuculeobases", 37.0, 1, max_span, max_loop, true, int(rnd()));
+			assert(abs(ans2.second.log_scale - log(SimpleMcCaskill<double>(sequence, "modified_nuculeobases", 37.0, max_span, max_loop).second)) < 0.00001);
 
 		}
 
@@ -78,7 +78,7 @@ void TestSampling(const int num) {
 			const int max_loop = ((iteration / 2) % 2) ? (longspan(rnd) % 30) : 30;
 			const std::string sequence = MakeRandomRnaSeq(n, rnd());
 			const auto ans1 = SampleMcCaskillUniform(sequence, 1, max_span, max_loop, true, int(rnd()));
-			const auto ans2 = SampleMcCaskillEnergyAware(sequence, "Turner2004", 37.0, 1, max_span, max_loop, true, int(rnd()));
+			const auto ans2 = SampleMcCaskillEnergyAware(sequence, "modified_nuculeobases", 37.0, 1, max_span, max_loop, true, int(rnd()));
 		}
 	}
 }
@@ -92,7 +92,7 @@ void TestSimpleMcCaskillWide(const int num) {
 
 	RintX1DOptions options;
 	options.temperature = 37.0;
-	options.param_file_name = std::string("Turner2004");
+	options.param_file_name = std::string("modified_nuculeobases");
 
 	for (int iteration = 0; iteration < num; ++iteration) {
 		std::cout << iteration << std::endl;
@@ -132,7 +132,7 @@ void TestRintD1Dim(const int num) {
 
 	RintX1DOptions options;
 	options.temperature = 37.0;
-	options.param_file_name = std::string("Turner2004");
+	options.param_file_name = std::string("modified_nuculeobases");
 
 	for (int iteration = 0; iteration < num; ++iteration) {
 		std::cout << iteration << std::endl;
@@ -205,7 +205,7 @@ void TestRintD2Dim(const int num) {
 
 	RintX2DOptions options;
 	options.temperature = 37.0;
-	options.param_file_name = std::string("Turner2004");
+	options.param_file_name = std::string("modified_nuculeobases");
 
 	for (int iteration = 0; iteration < num; ++iteration) {
 		std::cout << iteration << std::endl;
@@ -287,7 +287,7 @@ void TestRintW1Dim(const int num) {
 
 	RintX1DOptions options;
 	options.temperature = 37.0;
-	options.param_file_name = std::string("Turner2004");
+	options.param_file_name = std::string("modified_nuculeobases");
 
 	for (int iteration = 0; iteration < num; ++iteration) {
 		std::cout << iteration << std::endl;
@@ -374,7 +374,7 @@ void TestRintW2Dim(const int num) {
 
 	RintX2DOptions options;
 	options.temperature = 37.0;
-	options.param_file_name = std::string("Turner2004");
+	options.param_file_name = std::string("modified_nuculeobases");
 
 	for (int iteration = 0; iteration < num; ++iteration) {
 		std::cout << iteration << std::endl;
@@ -471,7 +471,7 @@ void TestCentroidFold(const int num) {
 
 	RintX1DOptions options;
 	options.temperature = 37.0;
-	options.param_file_name = std::string("Turner2004");
+	options.param_file_name = std::string("modified_nuculeobases");
 
 	std::uniform_real_distribution<double>gamma_rnd(0.1, 3.0);
 
@@ -568,7 +568,7 @@ void TestHagioNonFourier(const int num) {
 
 	RintX1DOptions options;
 	options.temperature = 37.0;
-	options.param_file_name = std::string("Turner2004");
+	options.param_file_name = std::string("modified_nuculeobases");
 
 	for (int iteration = 0; iteration < num; ++iteration) {
 		std::cout << iteration << std::endl;
@@ -649,7 +649,7 @@ void TestRintD1DimPK(const int num) {
 
 	RintX1DOptions options;
 	options.temperature = 37.0;
-	options.param_file_name = std::string("Turner2004");
+	options.param_file_name = std::string("modified_nuculeobases");
 
 	for (int iteration = 0; iteration < num; ++iteration) {
 		std::cout << iteration << std::endl;
