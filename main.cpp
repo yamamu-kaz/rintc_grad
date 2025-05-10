@@ -19,7 +19,7 @@ Copyright (c) 2019 Hiroki Takizawa
 #include <chrono>
 #include <sstream>
 #include <thread>
-
+#include <cstring>
 #include <omp.h>
 
 #include"complex_number.h"
@@ -32,6 +32,7 @@ Copyright (c) 2019 Hiroki Takizawa
 #include"experiment.h"
 #include"parameter.h"
 #include"centroid_fold.h"
+#include "optimize.hpp"
 
 #ifdef _WIN64 
 #include<windows.h>
@@ -59,7 +60,7 @@ void TestAll() {
 int verification(const std::string& structure, const std::string& sequence, const int max_span, const int max_loop) {
 
 	for (const char c : sequence) {
-		if (!(c == 'A' || c == 'U' || c == 'G' || c == 'C')) {
+		if (!(c == 'A' || c == 'U' || c == 'G' || c == 'C' || c == 'I' || c == 'M')) {
 			std::cerr << "Error: The RNA sequence must be uppercase." << std::endl;
 			return 1;
 		}
@@ -89,7 +90,7 @@ int verification(const std::string& structure, const std::string& sequence, cons
 
 	{
 		const int n = int(sequence.size());
-		const std::string bp = "AU UA GC CG GU UG";
+		const std::string bp = "AU UA GC CG GU UG CI IC IU UI MU UM";
 		std::string query = "XX";
 		std::vector<std::vector<int>>ans(n + 1, std::vector<int>(n + 1, 0));
 		std::stack<int> bp_pos;
@@ -147,6 +148,27 @@ int main_(int argc, char *argv[]) {
 //#ifdef _WIN64 
 //	SetPriorityClass(GetCurrentProcess(), BELOW_NORMAL_PRIORITY_CLASS);
 //#endif
+
+
+	if ((strcmp(argv[1],"calc") == 0)){
+		std::string param_file;
+		if (argc == 4){
+			param_file = std::string(argv[3]);
+		}else{
+			param_file = std::string("modified_nuculeobases.m6a_20240718");
+		}
+		const std::string data_file = std::string(argv[2]);
+		calc_bppm<Floating>(param_file,data_file);
+		return 0;
+	}
+
+	if ((strcmp(argv[1], "calc2") == 0)){
+		const std::string param_file = std::string(argv[3]);
+		const std::string data_file = std::string(argv[2]);
+		const std::string outputfile = std::string(argv[4]);
+		calc_bppm<Floating>(param_file,data_file,outputfile);
+		return 0;
+	}
 
 
 	if (argc == 2) {
@@ -210,7 +232,7 @@ int main_(int argc, char *argv[]) {
 
 		RintX1DOptions options;
 		options.temperature = 37.0;
-		options.param_file_name = std::string("Turner2004");
+		options.param_file_name = std::string("modified_nuculeobases");
 		options.max_span = W;
 		options.max_loop = max_loop;
 		options.sequence = sequence;
@@ -306,6 +328,32 @@ int main_(int argc, char *argv[]) {
 		return 1;
 	}
 
+	if ((argc == 11) && (strcmp(argv[1], "train") == 0)) {
+		const int nsample = std::stoi(std::string(argv[2]));
+		const int sequence_length = std::stoi(std::string(argv[3]));
+		const int max_span = std::stoi(std::string(argv[4]));
+		const double learning_rate = std::stod(std::string(argv[5]));
+		const int nepoch = std::stoi(std::string(argv[6]));
+		const double logstack_init = std::stod(std::string(argv[7]));
+		const double weight_centeral = std::stod(std::string(argv[8]));
+		const std::string param_file = std::string(argv[9]);
+		const std::string data_file = std::string(argv[10]);
+		const int max_loop = 30;
+		optimize<Floating>(
+			max_loop, 
+			max_span, 
+			nsample, 
+			sequence_length, 
+			nepoch, 
+			learning_rate, 
+			logstack_init,
+			weight_centeral,
+			param_file,
+			data_file);
+
+		return 0;
+	}
+
 	std::cout << "Error" << std::endl;
 	return 1;
 
@@ -317,7 +365,7 @@ int main_(int argc, char *argv[]) {
 
 
 int main(int argc, char *argv[]) {
-
+	// rintdwr::parasor_param::InitializeParameter("modified_nuculeobases", 37.0);
 	return rintdwr::main_(argc, argv);
 
 }

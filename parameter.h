@@ -8,6 +8,7 @@ Copyright (c) 2019 Hiroki Takizawa
 
 #include <iostream>
 #include <fstream>
+#include <iomanip>
 #include <algorithm>
 #include <string>
 #include <stack>
@@ -36,6 +37,25 @@ double ParDangling(const int type, const int five, const int three, const bool e
 double ParHairpinEnergy(const int i, const int j, const std::string& sequence);
 double ParLoopEnergy(const int i, const int j, const int p, const int q, const std::string& sequence);
 void InitializeParameter(const std::string& parameter_file_name, const double temperature);
+
+double dparstack_dp(const int i, const int j);
+double dParLoopEnergy_dp(
+	const int i, 
+	const int j, 
+	const int p, 
+	const int q, 
+	const std::string& sequence, 
+	const int pidx1, 
+	const int pidx2);
+void update_logstack(const double dif, const int i, const int j);
+void update_parstack();
+
+template <size_t pidx1Size, size_t pidx2Size>
+void reset_logstack(const double value, const double weight_central, bool (&mask)[pidx1Size][pidx2Size]);
+
+template <size_t pidx1Size, size_t pidx2Size>
+void print_logstack(const std::string logfile,  bool (&mask)[pidx1Size][pidx2Size]);
+
 
 extern bool counting;
 
